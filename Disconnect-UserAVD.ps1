@@ -37,8 +37,6 @@
     - Azure PowerShell modules (will be automatically installed if missing)
     - Active Azure connection (use Connect-AzAccount if not connected)
 
-    Author: System Administrator
-    Last Modified: January 30, 2024
 #>
 
 [CmdletBinding()]
@@ -123,8 +121,19 @@ function Test-AzureConnection {
     try {
         $context = Get-AzContext
         if (!$context) {
-            Write-Error "Not connected to Azure. Please run Connect-AzAccount first."
-            return $false
+            Write-Host "Not connected to Azure. Attempting to connect..." -ForegroundColor Yellow
+            try {
+                Connect-AzAccount -ErrorAction Stop
+                $context = Get-AzContext
+                if (!$context) {
+                    Write-Error "Failed to establish Azure connection after login attempt."
+                    return $false
+                }
+            }
+            catch {
+                Write-Error "Failed to connect to Azure: $($_.Exception.Message)"
+                return $false
+            }
         }
         Write-Host "Connected to Azure as: $($context.Account.Id)" -ForegroundColor Green
         return $true
