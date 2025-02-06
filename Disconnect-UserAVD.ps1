@@ -8,7 +8,7 @@
 
 .DESCRIPTION
     This script disconnects a specified user from an Azure Virtual Desktop host pool. It performs the following:
-    - Verifies and installs required Azure PowerShell modules (Az and Az.DesktopVirtualization)
+    - Verifies and installs required Azure PowerShell module (Az.DesktopVirtualization)
     - Checks Azure connection status
     - Finds and disconnects all active sessions for the specified user in the given host pool
     - Provides detailed feedback on all operations
@@ -34,9 +34,8 @@
 .NOTES
     Prerequisites:
     - PowerShell 5.1 or higher
-    - Azure PowerShell modules (will be automatically installed if missing)
+    - Azure PowerShell module (Az.DesktopVirtualization) (will be automatically installed if missing)
     - Active Azure connection (use Connect-AzAccount if not connected)
-
 #>
 
 [CmdletBinding()]
@@ -86,7 +85,7 @@ EXAMPLE
 
 NOTES
     - Requires PowerShell 5.1 or higher
-    - Required modules (Az and Az.DesktopVirtualization) will be automatically installed if missing
+    - Required module (Az.DesktopVirtualization) will be automatically installed if missing
     - Must be connected to Azure (use Connect-AzAccount if not connected)
 "@
     exit 0
@@ -117,58 +116,23 @@ function Test-ModuleInstalled {
     return $true
 }
 
-function Test-AzureConnection {
-    try {
-        $context = Get-AzContext
-        if (!$context) {
-            Write-Host "Not connected to Azure. Attempting to connect..." -ForegroundColor Yellow
-            try {
-                Connect-AzAccount -ErrorAction Stop
-                $context = Get-AzContext
-                if (!$context) {
-                    Write-Error "Failed to establish Azure connection after login attempt."
-                    return $false
-                }
-            }
-            catch {
-                Write-Error "Failed to connect to Azure: $($_.Exception.Message)"
-                return $false
-            }
-        }
-        Write-Host "Connected to Azure as: $($context.Account.Id)" -ForegroundColor Green
-        return $true
-    }
-    catch {
-        Write-Error "Error checking Azure connection: $($_.Exception.Message)"
-        return $false
-    }
-}
-
 # Main script execution
 try {
-    # Check and install required modules
-    $requiredModules = @("Az", "Az.DesktopVirtualization")
-    $modulesInstalled = $true
-    
-    foreach ($module in $requiredModules) {
-        if (!(Test-ModuleInstalled -ModuleName $module)) {
-            $modulesInstalled = $false
-            break
-        }
-    }
-    
-    if (!$modulesInstalled) {
-        throw "Required modules installation failed"
+    # Check and install required module
+    if (!(Test-ModuleInstalled -ModuleName "Az.DesktopVirtualization")) {
+        throw "Required module installation failed"
     }
 
-    # Import modules
-    foreach ($module in $requiredModules) {
-        Import-Module $module
-    }
+    # Import module
+    Import-Module Az.DesktopVirtualization
 
-    # Verify Azure connection
-    if (!(Test-AzureConnection)) {
-        throw "Azure connection verification failed"
+    # Simple connection check
+    try {
+        $null = Get-AzWvdHostPool -ResourceGroupName $ResourceGroupName -Name $HostPoolName -ErrorAction Stop
+        Write-Host "Successfully connected to Azure and verified host pool access" -ForegroundColor Green
+    }
+    catch {
+        throw "Failed to access Azure resources. Please ensure you're connected (Connect-AzAccount) and have proper permissions."
     }
 
     # Get all session hosts in the host pool
